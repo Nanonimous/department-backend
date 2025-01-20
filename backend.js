@@ -201,14 +201,15 @@ app.post('/login', sanitizeInput, async (req, res) => {
   // );
     let jwtPayload = {
       name : user.name,
-      role : user.role
+      role : user.role,
+      reg :user.register_no
     }
   // Create a JWT token
   const token = jwt.sign({ jwtPayload }, SECRET_KEY, { expiresIn: '1h' });
 
   // Send the token as the response
   res.cookie('jwtToken', token, {
-    httpOnly: true,
+    httpOnly: false,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'Lax',
     maxAge: 3600000,
@@ -253,6 +254,8 @@ app.post('/forgot-password',sanitizeInput, async (req, res) => {
     res.status(500).json({ message: 'Error sending reset email' });
   }
 })
+
+
 // Reset Password Endpoint
 app.post('/reset-password', async (req, res) => {
   const { token, password } = req.body;
@@ -294,104 +297,6 @@ console.log("sucessfully password reset");
     res.status(400).send({ message: 'Invalid or expired token' });
   }
 });
-
-
-
-app.post('/mental-health-checkin', authMiddleware, async (req, res) => {
-  const { mood, stressLevel, feelings, date } = req.body;
-  console.log('Request Body:', req.body);
-
-  let username; // Define `username` outside of the conditional blocks
-
-  try {
-    // Check if the loginInput is an email
-    const isEmail = validator.isEmail(req.user.loginInput);
-
-    if (isEmail) {
-      // Query the database to find the username using the email
-      const user = await db.collection('users').findOne({ email: req.user.loginInput }); // Adjust based on your DB structure
-      if (user) {
-        username = user.username; // Assign the username
-      } else {
-        return res.status(404).json({ message: 'User not found' });
-      }
-    } else {
-      // If not an email, assume loginInput is the username
-      username = req.user.loginInput;
-    }
-
-    // Check if username was successfully retrieved
-    if (!username) {
-      return res.status(401).json({ message: 'User not logged in' });
-    }
-
-    // Get the MongoDB collection
-    const collection = db.collection('check_ins');
-
-    // Insert the check-in data into the 'check_ins' collection
-    const result = await collection.insertOne({
-      username,
-      mood,
-      stressLevel,
-      feelings,
-      date: new Date(date), // Ensure the date is in a proper format
-      createdAt: new Date(), // Timestamp for when the check-in was created
-    });
-
-    // Send a success response
-    res.status(200).json({ message: 'Mental health check-in submitted successfully', result });
-
-  } catch (err) {
-    console.error('Error handling mental health check-in:', err);
-    res.status(500).json({ message: 'Error submitting mental health check-in' });
-  }
-});
-
-
-
-
-app.get('/check-ins', authMiddleware, async (req, res) => {
-  try {
-    const { loginInput } = req.user; // Assuming `req.user` contains the logged-in user's details
-    let username;
-
-    // Check if the loginInput is an email
-    const isEmail = validator.isEmail(loginInput);
-
-    if (isEmail) {
-      // Query the database to find the username using the email
-      const user = await db.collection('users').findOne({ email: loginInput }); // Adjust based on your DB structure
-      if (user) {
-        username = user.username; // Use the username from the DB
-      } else {
-        return res.status(404).json({ message: 'User not found' });
-      }
-    } else {
-      // If not an email, assume loginInput is the username
-      username = loginInput;
-    }
-
-    // Fetch check-ins from the database using the username
-    const checkIns = await db.collection('check_ins')
-      .find({ username }) // Query for check-ins by username
-      .sort({ date: -1 }) // Sort by date in descending order
-      .toArray(); // Convert the result to an array
-
-    if (checkIns.length === 0) {
-      return res.status(404).json({ message: 'No check-ins found for this user' });
-    }
-
-    // Respond with the check-ins
-    res.status(200).json(checkIns);
-
-  } catch (err) {
-    console.error('Error fetching check-ins:', err);
-    res.status(500).json({ message: 'An error occurred while fetching check-ins' });
-  }
-});
-
-
-
 
 // Start server
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
