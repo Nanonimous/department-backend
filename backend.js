@@ -7,10 +7,11 @@ import { MongoClient, ServerApiVersion } from 'mongodb';
 import nodemailer from 'nodemailer';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
-
+import mongoose from 'mongoose';
 dotenv.config();
-
-
+import User from './modal/user_detail.js';
+import Faculty from './modal/Faculty_Detail.js';
+import multer from 'multer';
 // Your code logic here
 
 // MongoDB connection URI and Database Name
@@ -63,7 +64,13 @@ const transporter = nodemailer.createTransport({
     pass:passemail,
   },
 });
-
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // set max file size to 10MB
+});
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 // Middleware
 const corsOptions = {
   origin: 'http://localhost:3000', // Frontend URL (adjust if different)
@@ -72,9 +79,21 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true,limit:'100mb' }));
+app.use(bodyParser.json({limit:'100mb'}));
 app.use(cookieParser());
 
+
+// MongoDB Atlas connection string (replace with actual values)
+
+// Connect to MongoDB Atlas
+mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => {
+    console.log('Connected to MongoDB Atlas');
+  })
+  .catch((error) => {
+    console.error('Error connecting to MongoDB Atlas:', error);
+  });
 import validator from 'validator'
 
 // Middleware to trim spaces and sanitize username and email
@@ -297,13 +316,64 @@ console.log("sucessfully password reset");
     res.status(400).send({ message: 'Invalid or expired token' });
   }
 });
+const updateUser = async (registerNo, updatedData) => {
+  try {
+    const result = await User.findOneAndUpdate(
+      { register_no: registerNo }, // Query condition
+      updatedData, // Data to update
+      { new: true, runValidators: true } // Return the updated document
+    );
 
+    console.log('Updated User:', result);
+    return result;
+  } catch (error) {
+    console.error('Error updating user:', error.message);
+    throw new Error('Update failed');
+  }
+};
 
-app.post('/editProfile',(req,res)=>{
-    const {fata} = req.body;
-    console.log(fata)
-})
+app.post('/editProfile', upload.fields([{ name: "profile_photo", maxCount: 1 }]), async (req, res) => {
+  try {
+    // Destructuring values from the request body
+    const { profile_desc, linkedin_link, github_link, email, leetcode_link, register_no } = req.body;
+    
+    if (!register_no) {
+      return res.status(400).json({ error: 'Register number is required.' });
+    }
 
+    // Handling file upload properly
+    let profilePhotoBuffer = null;
+    if (req.files["profile_photo"] && req.files["profile_photo"][0]) {
+      profilePhotoBuffer = req.files["profile_photo"][0].buffer;  // Store image buffer if it exists
+    }
+
+    // Prepare the updated data
+    const updatedData = {
+      profile_desc,
+      linkedin_link,
+      github_link,
+      email,
+      leetcode_link,
+      profile_photo: profilePhotoBuffer,
+      register_no
+    };
+
+    console.log("Update JSON:", updatedData);
+
+    // Update the user
+    const updatedUser = await updateUser(register_no, updatedData);
+    
+    if (!updatedUser) {
+      return res.status(500).json({ error: 'Failed to update user profile.' });
+    }
+    
+    return res.status(200).json({ message: 'Profile updated successfully.', updatedUser });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    return res.status(500).json({ error: 'An error occurred while updating the profile.' });
+  }
+});
+    
 app.post('/fetchProfile', async (req, res) => {
   try {
       const { reg } = req.body; // Extract 'reg' from the request body
@@ -319,8 +389,7 @@ app.post('/fetchProfile', async (req, res) => {
           return res.status(404).json({ error: "User not found" });
       }
 
-      console.log(user);
-      res.status(200).json(user); // Respond with the user data
+      res.status(200).json(user); // Respond with the user data 
   } catch (error) {
       console.error("Error fetching user profile:", error);
       res.status(500).json({ error: "Internal server error" });
