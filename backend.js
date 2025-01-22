@@ -298,5 +298,36 @@ console.log("sucessfully password reset");
   }
 });
 
+
+app.post('/editProfile',(req,res)=>{
+    const {fata} = req.body;
+    console.log(fata)
+})
+
+app.post('/fetchProfile', async (req, res) => {
+  try {
+      const { reg } = req.body; // Extract 'reg' from the request body
+
+      if (!reg) {
+          return res.status(400).json({ error: "Missing required parameter: reg" });
+      }
+
+      // Fetch the user data from MongoDB
+      const user = await db.collection("user_details").findOne({ register_no: reg });
+
+      if (!user) {
+          return res.status(404).json({ error: "User not found" });
+      }
+
+      console.log(user);
+      res.status(200).json(user); // Respond with the user data
+  } catch (error) {
+      console.error("Error fetching user profile:", error);
+      res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+
 // Start server
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
