@@ -13,9 +13,7 @@ import {ObjectId} from 'mongodb'
 //after solving error 
 import User from './modal/user_detail.js';
 import Faculty from './modal/Faculty_Detail.js';
-import multer from 'multer';
 // Your code logic here
-import {ObjectId} from 'mongodb'
 // MongoDB connection URI and Database Name
 const uri = process.env.CONNECTING_STRING;
 
@@ -80,8 +78,6 @@ const corsOptions = {
   credentials: true, // Allow cookies to be sent
 };
 
-
-const upload = multer(); // Configure multer for in-memory processing
 
 app.use(cors(corsOptions));
 app.use(bodyParser.json({ limit: "50mb" }));
@@ -236,11 +232,8 @@ app.post('/login', sanitizeInput, async (req, res) => {
       _id :user._id,
       reg:user.register_no
     }
-      _id :user._id,
-      reg :user.register_no
-
     }
-  }
+  
   // Create a JWT token
   const token = jwt.sign({ jwtPayload }, SECRET_KEY, { expiresIn: '1h' });
 
@@ -442,25 +435,20 @@ app.post('/editProfile', upload.fields([
 
 
 
-    
 app.post('/fetchProfile', async (req, res) => {
   try {
       const idd = req.body.ids; // Extract 'reg' from the request body
-      const idd = req.body.ids; // Extract 'reg' from the request body
 
-      if (!idd) {
       if (!idd) {
           return res.status(400).json({ error: "Missing required parameter: reg" });
       }
 
       // Fetch the user data from MongoDB
       const user = await db.collection("user_details").findOne({ _id:new ObjectId(idd) });
-      const user = await db.collection("user_details").findOne({ _id:new ObjectId(idd) });
 
       if (!user) {
           return res.status(404).json({ error: "User not found" });
       }
-      console.log(user._id)
       console.log(user._id)
       res.status(200).json(user); // Respond with the user data
   } catch (error) {
