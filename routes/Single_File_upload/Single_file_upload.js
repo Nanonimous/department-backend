@@ -37,7 +37,7 @@ route.post("/",upload,async(req,res)=>{
     console.log(file)
    
 
-    const result = await collection.insertOne(file);
+    // const result = await collection.insertOne(file);
 
     res.json({message:"file upload route for edit pdf"})
 
