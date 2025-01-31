@@ -3,11 +3,16 @@ import bodyParser from 'body-parser';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import cors from 'cors';
-import { MongoClient, ServerApiVersion } from 'mongodb';
+import { MongoClient, ServerApiVersion,ObjectId } from 'mongodb';
 import nodemailer from 'nodemailer';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import journal from "./routes/journals.js"
+import paper from "./routes/paper.js"
+import patent from "./routes/patent.js"
+import A_Calander from './routes/Single_File_upload/Single_file_upload.js';
 
+export { db }; // Export the `db` instance
 dotenv.config();
 
 
@@ -24,6 +29,8 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   } 
 });
+
+
 async function run() {
   try {
     // Connect the client to the server (starting from MongoDB v4.7, this is optional)
@@ -48,12 +55,33 @@ run()
   })
   .catch(console.dir);
 
-let db = client.db(process.env.DB_NAME);
 
+
+
+let db = client.db(process.env.DB_NAME);
 const app = express();
 const PORT = process.env.PORT;
 const fromemail=process.env.FROM_EMAIL;
 const passemail=process.env.EMAIL_PASSWORD;
+
+
+// Pass `db` to routes using middleware
+app.use((req, res, next) => {
+  req.db = db; // Attach `db` to the request object
+  next();
+});
+
+
+
+
+
+
+
+
+
+
+
+
 // Secret key for JWT
 const SECRET_KEY = process.env.SECRET_KEY;
 const transporter = nodemailer.createTransport({
@@ -63,6 +91,9 @@ const transporter = nodemailer.createTransport({
     pass:passemail,
   },
 });
+
+
+
 
 // Middleware
 const corsOptions = {
@@ -74,6 +105,18 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(cookieParser());
+
+
+
+
+// routes set up
+app.use("/journal",journal)
+app.use("/paper",paper)
+app.use("/patent",patent)
+app.use("/file_upload",A_Calander)
+
+
+
 
 import validator from 'validator'
 
