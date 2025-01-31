@@ -26,19 +26,27 @@ mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
   });
 
 
-const createUser = async () => {
-    const newUser = new User({
-      name: 'nivaas',
-      email: 'bob@exasdmple.com',
-      password: await hashPassword('nivaas'),
-      register_no: '22tk0034',
-      enrollment_no: '202208029',
-      linkedin_link:'linkedin.com',
-      github_link:'github.com',
-      leetcode_link:'leedcode.com',
-      profile_desc:'iam nivaas iam interested in machine learning and iam passionated about iot and learning data structures right now ',
-      role:'stud'
-    });
+// const createUser = async () => {
+//     const newUser = new User({
+//       name: 'nivaas',
+//       email: 'bob@exasdmple.com',
+//       password: await hashPassword('nivaas'),
+//       register_no: '22tk0034',
+//       enrollment_no: '202208029',
+//       linkedin_link:'linkedin.com',
+//       github_link:'github.com',
+//       leetcode_link:'leedcode.com',
+//       profile_desc:'iam nivaas iam interested in machine learning and iam passionated about iot and learning data structures right now ',
+//       role:'stud'
+//     });
+
+    
+const adminUser = async () => {
+  const newUser = new User({
+    name: 'admin',
+    password: await hashPassword('placement'),
+    role:'admin'
+  });
 
 // const createFaculty = async()=>{
 //     const newFaculty = new Faculty({
@@ -66,4 +74,4 @@ try {
 };
 
 // Call the function to add the user
-createUser();
+adminUser();

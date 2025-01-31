@@ -13,7 +13,7 @@ import User from './modal/user_detail.js';
 import Faculty from './modal/Faculty_Detail.js';
 import multer from 'multer';
 // Your code logic here
-
+import {ObjectId} from 'mongodb'
 // MongoDB connection URI and Database Name
 const uri = process.env.CONNECTING_STRING;
 
@@ -218,11 +218,22 @@ app.post('/login', sanitizeInput, async (req, res) => {
   //   { _id: user._id },
   //   { $set: { failedAttempts: 0, lastFailedAttempt: null } }
   // );
-    let jwtPayload = {
+
+  if(user.role == 'admin'){
+    var jwtPayload = {
       name : user.name,
       role : user.role,
-      reg :user.register_no
+      _id :user._id,
     }
+  }else{
+    var jwtPayload = {
+      name : user.name,
+      role : user.role,
+      _id :user._id,
+      reg :user.register_no
+
+    }
+  }
   // Create a JWT token
   const token = jwt.sign({ jwtPayload }, SECRET_KEY, { expiresIn: '1h' });
 
@@ -332,69 +343,97 @@ const updateUser = async (registerNo, updatedData) => {
   }
 };
 
-app.post('/editProfile', upload.fields([{ name: "profile_photo", maxCount: 1 }]), async (req, res) => {
+app.post('/editProfile', upload.fields([
+  { name: 'profile_photo', maxCount: 1 },  // Profile photo upload
+  { name: 'resume', maxCount: 1 },         // Resume (PDF) upload
+]), async (req, res) => {
   try {
-    // Destructuring values from the request body
-    const { profile_desc, linkedin_link, github_link, email, leetcode_link, register_no } = req.body;
-    
-    if (!register_no) {
-      return res.status(400).json({ error: 'Register number is required.' });
-    }
-
-    // Handling file upload properly
-    let profilePhotoBuffer = null;
-    if (req.files["profile_photo"] && req.files["profile_photo"][0]) {
-      profilePhotoBuffer = req.files["profile_photo"][0].buffer;  // Store image buffer if it exists
-    }
-
-    // Prepare the updated data
-    const updatedData = {
-      profile_desc,
-      linkedin_link,
-      github_link,
-      email,
-      leetcode_link,
-      profile_photo: profilePhotoBuffer,
-      register_no
+    // Handle the case when no file is uploaded
+    const dataToUpdate = {
+      profile_desc: req.body.profile_desc,
+      linkedin_link: req.body.linkedin_link,
+      github_link: req.body.github_link,
+      email: req.body.email,
+      leetcode_link: req.body.leetcode_link,
     };
 
-    console.log("Update JSON:", updatedData);
-
-    // Update the user
-    const updatedUser = await updateUser(register_no, updatedData);
-    
-    if (!updatedUser) {
-      return res.status(500).json({ error: 'Failed to update user profile.' });
+    // Check if a new profile photo was uploaded
+    if (req.files && req.files['profile_photo']) {
+      dataToUpdate.profile_photo = req.files['profile_photo'][0].buffer;
     }
-    
-    return res.status(200).json({ message: 'Profile updated successfully.', updatedUser });
-  } catch (error) {
-    console.error('Error updating profile:', error);
-    return res.status(500).json({ error: 'An error occurred while updating the profile.' });
+
+    // Check if a new resume was uploaded
+    if (req.files && req.files['resume']) {
+      dataToUpdate.resume = req.files['resume'][0].buffer;
+    }
+
+    // MongoDB update logic
+    const filter = { _id: new ObjectId(req.body._id) };
+    const update = {
+      $set: dataToUpdate,
+    };
+
+    const result = await db.collection('user_details').updateOne(filter, update, { upsert: true });
+
+    if (result.matchedCount > 0) {
+      res.status(200).json({ message: "Profile updated successfully." });
+    } else if (result.upsertedCount > 0) {
+      res.status(201).json({ message: "Profile created successfully.", id: result.upsertedId });
+    } else {
+      res.status(500).json({ error: "No changes made to the profile." });
+    }
+  } catch (err) {
+    console.error("Error updating profile:", err);
+    res.status(500).json({ error: "An error occurred while updating the profile." });
   }
 });
+
     
 app.post('/fetchProfile', async (req, res) => {
   try {
-      const { reg } = req.body; // Extract 'reg' from the request body
+      const idd = req.body.ids; // Extract 'reg' from the request body
 
-      if (!reg) {
+      if (!idd) {
           return res.status(400).json({ error: "Missing required parameter: reg" });
       }
 
       // Fetch the user data from MongoDB
-      const user = await db.collection("user_details").findOne({ register_no: reg });
+      const user = await db.collection("user_details").findOne({ _id:new ObjectId(idd) });
 
       if (!user) {
           return res.status(404).json({ error: "User not found" });
       }
-
-      res.status(200).json(user); // Respond with the user data 
+      console.log(user._id)
+      res.status(200).json(user); // Respond with the user data
   } catch (error) {
       console.error("Error fetching user profile:", error);
       res.status(500).json({ error: "Internal server error" });
   }
 });
+
+app.post("/BufferToBase64", (req, res) => {
+  console.log("Coming here in server");
+  try {
+    const { buffer } = req.body; // Extract 'buffer' key from req.body
+    console.log("Received buffer array:", buffer);
+
+    if (!Array.isArray(buffer)) {
+      return res.status(400).json({ error: "Invalid buffer data. Expected an array." });
+    }
+
+    // Convert array back to Buffer
+    const bufferData = Buffer.from(buffer);
+
+    // Convert buffer to Base64
+    const base64String = bufferData.toString("base64");
+
+    res.status(200).json({ base64: base64String });
+  } catch (error) {
+    console.error("Error processing buffer:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 
 
 
