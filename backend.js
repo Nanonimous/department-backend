@@ -12,10 +12,11 @@ import journal from "./routes/journals.js"
 import paper from "./routes/paper.js"
 import patent from "./routes/patent.js"
 import A_Calander from './routes/Single_File_upload/Single_file_upload.js';
+import Major_Event_backend from './routes/Event_page/Major_Event_backend.js';
 
 export { db }; // Export the `db` instance
 dotenv.config();
-import {ObjectId} from 'mongodb'
+
 //after solving error 
 import User from './modal/user_detail.js';
 import Faculty from './modal/Faculty_Detail.js';
@@ -126,6 +127,7 @@ app.use("/journal",journal)
 app.use("/paper",paper)
 app.use("/patent",patent)
 app.use("/file_upload",A_Calander)
+app.use("/major_event",Major_Event_backend)
 
 
 
