@@ -15,7 +15,6 @@ import A_Calander from './routes/Single_File_upload/Single_file_upload.js';
 
 export { db }; // Export the `db` instance
 dotenv.config();
-import {ObjectId} from 'mongodb'
 //after solving error 
 import User from './modal/user_detail.js';
 import Faculty from './modal/Faculty_Detail.js';

@@ -1,6 +1,5 @@
 import { Router } from "express";
 import {db} from "../../backend.js"
-import { ObjectId } from 'mongodb';
 import multer from "multer";
 
 const route = Router()
