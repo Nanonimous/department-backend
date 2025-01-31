@@ -7,8 +7,10 @@ import { MongoClient, ServerApiVersion } from 'mongodb';
 import nodemailer from 'nodemailer';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
+import multer from 'multer';import mongoose from 'mongoose';
 dotenv.config();
+import {ObjectId} from 'mongodb'
+//after solving error 
 import User from './modal/user_detail.js';
 import Faculty from './modal/Faculty_Detail.js';
 import multer from 'multer';
@@ -78,7 +80,11 @@ const corsOptions = {
   credentials: true, // Allow cookies to be sent
 };
 
+
+const upload = multer(); // Configure multer for in-memory processing
+
 app.use(cors(corsOptions));
+app.use(bodyParser.json({ limit: "50mb" }));
 app.use(bodyParser.urlencoded({ extended: true,limit:'100mb' }));
 app.use(bodyParser.json({limit:'100mb'}));
 app.use(cookieParser());
@@ -177,8 +183,6 @@ app.post('/login', sanitizeInput, async (req, res) => {
 
   const user = await db.collection("user_details").findOne(query);
 
-  console.log(user);
-
   if (!user) {
     return res.status(401).send({ message: 'Username or email does not exist' });
   }
@@ -229,6 +233,9 @@ app.post('/login', sanitizeInput, async (req, res) => {
     var jwtPayload = {
       name : user.name,
       role : user.role,
+      _id :user._id,
+      reg:user.register_no
+    }
       _id :user._id,
       reg :user.register_no
 
@@ -301,7 +308,7 @@ app.post('/reset-password', async (req, res) => {
     const { email } = decoded; // Extract email from the token payload
 
     // Check if the email exists in the database
-    const user = await db.collection("users").findOne({ email });
+    const user = await db.collection("users").findOne({email });
 
     if (!user) {
       return res.status(404).send({ message: 'User not found' });
@@ -325,6 +332,51 @@ console.log("sucessfully password reset");
   } catch (err) {
     console.error('Error during reset:', err);
     res.status(400).send({ message: 'Invalid or expired token' });
+  }
+});
+
+app.post('/editProfile', upload.fields([
+  { name: 'profile_photo', maxCount: 1 },  // Profile photo upload
+  { name: 'resume', maxCount: 1 },         // Resume (PDF) upload
+]), async (req, res) => {
+  try {
+    // Handle the case when no file is uploaded
+    const dataToUpdate = {
+      profile_desc: req.body.profile_desc,
+      linkedin_link: req.body.linkedin_link,
+      github_link: req.body.github_link,
+      email: req.body.email,
+      leetcode_link: req.body.leetcode_link,
+    };
+
+    // Check if a new profile photo was uploaded
+    if (req.files && req.files['profile_photo']) {
+      dataToUpdate.profile_photo = req.files['profile_photo'][0].buffer;
+    }
+
+    // Check if a new resume was uploaded
+    if (req.files && req.files['resume']) {
+      dataToUpdate.resume = req.files['resume'][0].buffer;
+    }
+
+    // MongoDB update logic
+    const filter = { _id: new ObjectId(req.body._id) };
+    const update = {
+      $set: dataToUpdate,
+    };
+
+    const result = await db.collection('user_details').updateOne(filter, update, { upsert: true });
+
+    if (result.matchedCount > 0) {
+      res.status(200).json({ message: "Profile updated successfully." });
+    } else if (result.upsertedCount > 0) {
+      res.status(201).json({ message: "Profile created successfully.", id: result.upsertedId });
+    } else {
+      res.status(500).json({ error: "No changes made to the profile." });
+    }
+  } catch (err) {
+    console.error("Error updating profile:", err);
+    res.status(500).json({ error: "An error occurred while updating the profile." });
   }
 });
 const updateUser = async (registerNo, updatedData) => {
@@ -388,21 +440,27 @@ app.post('/editProfile', upload.fields([
   }
 });
 
+
+
     
 app.post('/fetchProfile', async (req, res) => {
   try {
       const idd = req.body.ids; // Extract 'reg' from the request body
+      const idd = req.body.ids; // Extract 'reg' from the request body
 
+      if (!idd) {
       if (!idd) {
           return res.status(400).json({ error: "Missing required parameter: reg" });
       }
 
       // Fetch the user data from MongoDB
       const user = await db.collection("user_details").findOne({ _id:new ObjectId(idd) });
+      const user = await db.collection("user_details").findOne({ _id:new ObjectId(idd) });
 
       if (!user) {
           return res.status(404).json({ error: "User not found" });
       }
+      console.log(user._id)
       console.log(user._id)
       res.status(200).json(user); // Respond with the user data
   } catch (error) {
@@ -435,6 +493,27 @@ app.post("/BufferToBase64", (req, res) => {
 });
 
 
+
+app.post("/BufferToBase64", (req, res) => {
+  try {
+    const bufferArray = req.body;
+
+    if (!Array.isArray(bufferArray)) {
+      return res.status(400).json({ error: "Invalid buffer data" });
+    }
+
+    // Convert array back to Buffer
+    const buffer = Buffer.from(bufferArray);
+
+    // Convert buffer to Base64
+    const base64String = buffer.toString("base64");
+
+    res.status(200).json({ base64: base64String });
+  } catch (error) {
+    console.error("Error processing buffer:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 
 // Start server
