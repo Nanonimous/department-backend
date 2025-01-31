@@ -5,7 +5,7 @@ import { checkJwtCookie } from "../../Jwt_verify/checkJwtCookie.jsx";
 import { FaCreativeCommonsPdAlt } from "react-icons/fa";
 import { formToJSON } from "axios";
 import BufferToBase64 from '../../BufferToBase64/BufferToBase64.jsx'
-
+ 
 
 export default function Seperate_student_Edit({ title }) {
   const [editContent, setEditContent] = useState(null);
