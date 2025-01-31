@@ -7,6 +7,7 @@ import { MongoClient, ServerApiVersion,ObjectId } from 'mongodb';
 import nodemailer from 'nodemailer';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import multer from 'multer';import mongoose from 'mongoose';
 import journal from "./routes/journals.js"
 import paper from "./routes/paper.js"
 import patent from "./routes/patent.js"
@@ -14,10 +15,11 @@ import A_Calander from './routes/Single_File_upload/Single_file_upload.js';
 
 export { db }; // Export the `db` instance
 dotenv.config();
-
-
+import {ObjectId} from 'mongodb'
+//after solving error 
+import User from './modal/user_detail.js';
+import Faculty from './modal/Faculty_Detail.js';
 // Your code logic here
-
 // MongoDB connection URI and Database Name
 const uri = process.env.CONNECTING_STRING;
 
@@ -91,6 +93,13 @@ const transporter = nodemailer.createTransport({
     pass:passemail,
   },
 });
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // set max file size to 10MB
+});
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 
 
@@ -102,8 +111,11 @@ const corsOptions = {
   credentials: true, // Allow cookies to be sent
 };
 
+
 app.use(cors(corsOptions));
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: "50mb" }));
+app.use(bodyParser.urlencoded({ extended: true,limit:'100mb' }));
+app.use(bodyParser.json({limit:'100mb'}));
 app.use(cookieParser());
 
 
@@ -118,6 +130,17 @@ app.use("/file_upload",A_Calander)
 
 
 
+
+// MongoDB Atlas connection string (replace with actual values)
+
+// Connect to MongoDB Atlas
+mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => {
+    console.log('Connected to MongoDB Atlas');
+  })
+  .catch((error) => {
+    console.error('Error connecting to MongoDB Atlas:', error);
+  });
 import validator from 'validator'
 
 // Middleware to trim spaces and sanitize username and email
@@ -201,8 +224,6 @@ app.post('/login', sanitizeInput, async (req, res) => {
 
   const user = await db.collection("user_details").findOne(query);
 
-  console.log(user);
-
   if (!user) {
     return res.status(401).send({ message: 'Username or email does not exist' });
   }
@@ -242,11 +263,22 @@ app.post('/login', sanitizeInput, async (req, res) => {
   //   { _id: user._id },
   //   { $set: { failedAttempts: 0, lastFailedAttempt: null } }
   // );
-    let jwtPayload = {
+
+  if(user.role == 'admin'){
+    var jwtPayload = {
       name : user.name,
       role : user.role,
-      reg :user.register_no
+      _id :user._id,
     }
+  }else{
+    var jwtPayload = {
+      name : user.name,
+      role : user.role,
+      _id :user._id,
+      reg:user.register_no
+    }
+    }
+  
   // Create a JWT token
   const token = jwt.sign({ jwtPayload }, SECRET_KEY, { expiresIn: '1h' });
 
@@ -314,7 +346,7 @@ app.post('/reset-password', async (req, res) => {
     const { email } = decoded; // Extract email from the token payload
 
     // Check if the email exists in the database
-    const user = await db.collection("users").findOne({ email });
+    const user = await db.collection("users").findOne({email });
 
     if (!user) {
       return res.status(404).send({ message: 'User not found' });
@@ -341,28 +373,128 @@ console.log("sucessfully password reset");
   }
 });
 
+app.post('/editProfile', upload.fields([
+  { name: 'profile_photo', maxCount: 1 },  // Profile photo upload
+  { name: 'resume', maxCount: 1 },         // Resume (PDF) upload
+]), async (req, res) => {
+  try {
+    // Handle the case when no file is uploaded
+    const dataToUpdate = {
+      profile_desc: req.body.profile_desc,
+      linkedin_link: req.body.linkedin_link,
+      github_link: req.body.github_link,
+      email: req.body.email,
+      leetcode_link: req.body.leetcode_link,
+    };
 
-app.post('/editProfile',(req,res)=>{
-    const {fata} = req.body;
-    console.log(fata)
-})
+    // Check if a new profile photo was uploaded
+    if (req.files && req.files['profile_photo']) {
+      dataToUpdate.profile_photo = req.files['profile_photo'][0].buffer;
+    }
+
+    // Check if a new resume was uploaded
+    if (req.files && req.files['resume']) {
+      dataToUpdate.resume = req.files['resume'][0].buffer;
+    }
+
+    // MongoDB update logic
+    const filter = { _id: new ObjectId(req.body._id) };
+    const update = {
+      $set: dataToUpdate,
+    };
+
+    const result = await db.collection('user_details').updateOne(filter, update, { upsert: true });
+
+    if (result.matchedCount > 0) {
+      res.status(200).json({ message: "Profile updated successfully." });
+    } else if (result.upsertedCount > 0) {
+      res.status(201).json({ message: "Profile created successfully.", id: result.upsertedId });
+    } else {
+      res.status(500).json({ error: "No changes made to the profile." });
+    }
+  } catch (err) {
+    console.error("Error updating profile:", err);
+    res.status(500).json({ error: "An error occurred while updating the profile." });
+  }
+});
+const updateUser = async (registerNo, updatedData) => {
+  try {
+    const result = await User.findOneAndUpdate(
+      { register_no: registerNo }, // Query condition
+      updatedData, // Data to update
+      { new: true, runValidators: true } // Return the updated document
+    );
+
+    console.log('Updated User:', result);
+    return result;
+  } catch (error) {
+    console.error('Error updating user:', error.message);
+    throw new Error('Update failed');
+  }
+};
+
+app.post('/editProfile', upload.fields([
+  { name: 'profile_photo', maxCount: 1 },  // Profile photo upload
+  { name: 'resume', maxCount: 1 },         // Resume (PDF) upload
+]), async (req, res) => {
+  try {
+    // Handle the case when no file is uploaded
+    const dataToUpdate = {
+      profile_desc: req.body.profile_desc,
+      linkedin_link: req.body.linkedin_link,
+      github_link: req.body.github_link,
+      email: req.body.email,
+      leetcode_link: req.body.leetcode_link,
+    };
+
+    // Check if a new profile photo was uploaded
+    if (req.files && req.files['profile_photo']) {
+      dataToUpdate.profile_photo = req.files['profile_photo'][0].buffer;
+    }
+
+    // Check if a new resume was uploaded
+    if (req.files && req.files['resume']) {
+      dataToUpdate.resume = req.files['resume'][0].buffer;
+    }
+
+    // MongoDB update logic
+    const filter = { _id: new ObjectId(req.body._id) };
+    const update = {
+      $set: dataToUpdate,
+    };
+
+    const result = await db.collection('user_details').updateOne(filter, update, { upsert: true });
+
+    if (result.matchedCount > 0) {
+      res.status(200).json({ message: "Profile updated successfully." });
+    } else if (result.upsertedCount > 0) {
+      res.status(201).json({ message: "Profile created successfully.", id: result.upsertedId });
+    } else {
+      res.status(500).json({ error: "No changes made to the profile." });
+    }
+  } catch (err) {
+    console.error("Error updating profile:", err);
+    res.status(500).json({ error: "An error occurred while updating the profile." });
+  }
+});
+
+
 
 app.post('/fetchProfile', async (req, res) => {
   try {
-      const { reg } = req.body; // Extract 'reg' from the request body
+      const idd = req.body.ids; // Extract 'reg' from the request body
 
-      if (!reg) {
+      if (!idd) {
           return res.status(400).json({ error: "Missing required parameter: reg" });
       }
 
       // Fetch the user data from MongoDB
-      const user = await db.collection("user_details").findOne({ register_no: reg });
+      const user = await db.collection("user_details").findOne({ _id:new ObjectId(idd) });
 
       if (!user) {
           return res.status(404).json({ error: "User not found" });
       }
-
-      console.log(user);
+      console.log(user._id)
       res.status(200).json(user); // Respond with the user data
   } catch (error) {
       console.error("Error fetching user profile:", error);
@@ -370,6 +502,51 @@ app.post('/fetchProfile', async (req, res) => {
   }
 });
 
+app.post("/BufferToBase64", (req, res) => {
+  console.log("Coming here in server");
+  try {
+    const { buffer } = req.body; // Extract 'buffer' key from req.body
+    console.log("Received buffer array:", buffer);
+
+    if (!Array.isArray(buffer)) {
+      return res.status(400).json({ error: "Invalid buffer data. Expected an array." });
+    }
+
+    // Convert array back to Buffer
+    const bufferData = Buffer.from(buffer);
+
+    // Convert buffer to Base64
+    const base64String = bufferData.toString("base64");
+
+    res.status(200).json({ base64: base64String });
+  } catch (error) {
+    console.error("Error processing buffer:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+
+app.post("/BufferToBase64", (req, res) => {
+  try {
+    const bufferArray = req.body;
+
+    if (!Array.isArray(bufferArray)) {
+      return res.status(400).json({ error: "Invalid buffer data" });
+    }
+
+    // Convert array back to Buffer
+    const buffer = Buffer.from(bufferArray);
+
+    // Convert buffer to Base64
+    const base64String = buffer.toString("base64");
+
+    res.status(200).json({ base64: base64String });
+  } catch (error) {
+    console.error("Error processing buffer:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 
 // Start server
