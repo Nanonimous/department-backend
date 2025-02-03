@@ -69,8 +69,8 @@ try {
     console.log('New user saved:', savedUser);
   } catch (error) {
     console.error('Error saving user:', error);
-  }
-
+  } 
+ 
 };
 
 // Call the function to add the user

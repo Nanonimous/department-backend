@@ -244,7 +244,7 @@ app.post('/login', sanitizeInput, async (req, res) => {
   //       { _id: user._id },
   //       { $set: { failedAttempts: 0, lastFailedAttempt: null } }
   //     );
-  //   }
+  //   } 
   // }
 
   // Compare the password with the hashed password stored in the database
@@ -260,13 +260,13 @@ app.post('/login', sanitizeInput, async (req, res) => {
     return res.status(401).send({ message: 'Invalid credentials' });
   }
 
-  // Reset failed attempts if login is successful
+  // Reset failed attempts if login is successful 
   // await db.collection('user_details').updateOne(
   //   { _id: user._id },
   //   { $set: { failedAttempts: 0, lastFailedAttempt: null } }
   // );
 
-  if(user.role == 'admin'){
+  if(user.role == 'Admin'){
     var jwtPayload = {
       name : user.name,
       role : user.role,
