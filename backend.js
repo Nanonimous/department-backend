@@ -13,7 +13,7 @@ import paper from "./routes/paper.js"
 import patent from "./routes/patent.js"
 import A_Calander from './routes/Single_File_upload/Single_file_upload.js';
 import Major_Event_backend from './routes/Event_page/Major_Event_backend.js';
-
+import { google } from 'googleapis';
 export { db }; // Export the `db` instance
 dotenv.config();
 
@@ -549,7 +549,571 @@ app.post("/BufferToBase64", (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+//resourse code
 
+
+//add link
+
+app.post('/addlink', async (req, res) => {
+  const { newLink, cookieValue, domain } = req.body;
+  console.log(newLink, cookieValue, domain);
+
+  // Check if newLink and cookieValue exist before proceeding
+  if (!newLink || !cookieValue) {
+    return res.status(400).json({ message: 'Missing required fields.' });
+  }
+
+  try {
+    // Insert the new link into the database
+    const result = await db.collection('links').insertOne({
+      link: newLink,
+      domain: domain,
+      cookieValue: cookieValue,
+      createdAt: new Date(), // Add timestamp if needed
+    });
+
+    // Respond with success and the inserted link details
+    res.json({
+      message: 'Successfully uploaded link',
+      newLink: {
+        link: newLink,
+        domain: domain,
+        cookieValue: cookieValue,
+        createdAt: new Date(),
+        id: result.insertedId, // Use the insertedId from MongoDB
+      }
+    });
+  } catch (error) {
+    console.error('Error inserting link:', error);
+    res.status(500).json({ message: 'Error uploading link.' });
+  }
+});
+
+
+//retrive links
+
+app.get('/links', async (req, res) => {
+  try {
+    const domain = req.query.domain; 
+    // Fetch all documents from the 'links' collection
+    const filter = domain && typeof domain === 'string' ? { domain: domain } : {};
+
+    // Fetch documents from the 'links' collection based on the filter
+    const links = await db.collection('links').find(filter).toArray();
+    console.log(links);
+    
+
+    // Respond with the links data
+    res.json({ links });
+  } catch (error) { 
+    console.error('Error fetching links:', error);
+    res.status(500).json({ error: 'Failed to fetch links' });
+  }
+});
+
+//delete specific link
+
+
+app.delete('/deletelinks/:id', async (req, res) => {
+  const linkId = req.params.id;
+  console.log(linkId);
+  
+
+  try {
+    // Ensure the ObjectId is valid
+    if (!ObjectId.isValid(linkId)) {
+      return res.status(400).json({ error: 'Invalid ObjectId' });
+    }
+
+    // Delete the link by ObjectId
+    const result = await db.collection('links').deleteOne({ _id: new ObjectId(linkId) });
+console.log(result.deletedCount);
+
+    if (result.deletedCount === 1) {
+      res.json({ message: 'Link deleted successfully' });
+    } else {
+      res.status(404).json({ error: 'Link not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting link:', error);
+    res.status(500).json({ error: 'Failed to delete link' });
+  }
+});
+
+
+//video resourse
+app.get('/videos', async (req, res) => {
+  const domain = req.query.domain; 
+  try {
+    const filter = domain && typeof domain === 'string' ? { domain: domain } : {};
+
+    // Fetch documents from the 'links' collection based on the filter
+    const videos = await db.collection('videos').find(filter).toArray();
+    console.log(videos);
+    
+
+    // Respond with the links data
+    res.json({ videos });
+  } catch (error) {
+    console.error('Error fetching videos:', error);
+    res.status(500).json({ error: 'Failed to fetch videos' });
+  }
+});
+
+//upload video
+
+app.post('/addvideo', async (req, res) => {
+  
+  const { newVideo, cookieValue, domain } = req.body;
+  console.log(newVideo, cookieValue, domain);
+
+
+  const videoUrl = newVideo.videoId;
+
+  // Extract YouTube ID from the video URL
+  function extractVideoId(videoUrl) {
+    // Regular expression to match YouTube video IDs
+    var regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    var match = videoUrl.match(regExp);
+    if (match && match[2].length === 11) {
+        // The video ID is the second element in the match array
+        return match[2];
+    } else {
+        // If no match found or video ID is not 11 characters long, return null
+        return null;
+    }
+}
+
+  const videoID = extractVideoId(videoUrl);
+  
+  // Check if video ID was extracted successfully
+  if (!videoID) {
+    return res.status(400).json({ error: "Invalid YouTube URL" });
+  }
+
+  const user = req.body.cookieValue;
+  console.log(user);
+
+  try {
+    const result = await db.collection('videos').insertOne({
+      Video: newVideo,
+      domain: domain,
+      videoid:videoID,
+      cookieValue: cookieValue,
+      createdAt: new Date(), // Add timestamp if needed
+    });
+
+    // Respond with success and the inserted link details
+    res.json({
+      message: 'Successfully uploaded link',
+      newVideo: {
+        Video: newVideo,
+        domain: domain,
+        cookieValue: cookieValue,
+        videoid:videoID,
+        createdAt: new Date(),
+        id: result.insertedId, // Use the insertedId from MongoDB
+      }
+    });
+    
+  } catch (error) {
+    console.error("Error adding video:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.delete('/videodelete/:videoid',async(req,res)=>{
+  const videoid=req.params.videoid;
+  console.log(videoid);
+  try {
+    // Ensure the ObjectId is valid
+    if (!ObjectId.isValid(videoid)) {
+      return res.status(400).json({ error: 'Invalid ObjectId' });
+    }
+
+    // Delete the link by ObjectId
+    const result = await db.collection('videos').deleteOne({ _id: new ObjectId(videoid) });
+console.log(result.deletedCount);
+
+    if (result.deletedCount === 1) {
+      res.json({ message: 'video deleted successfully' });
+    } else {
+      res.status(404).json({ error: 'video not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting video:', error);
+    res.status(500).json({ error: 'Failed to delete video' });
+  }
+})
+
+
+
+//notes
+
+// Fetch notes
+app.get("/notes", async (req, res) => {
+
+  const { cookieValue, domain } = req.query; // Get values from query parameters 
+
+  try {
+    const filter = domain && typeof domain === 'string' ? { domain: domain } : {};
+
+    // Fetch documents from the 'links' collection based on the filter
+    const notes = await db.collection('notes').find(filter).toArray();
+
+console.log(notes);
+    // Respond with the links data
+    res.json({ notes });
+  } catch (error) {
+    console.error("Error fetching notes:", error);
+    res.status(500).send({ error: "Failed to fetch notes" });
+  }
+});
+
+
+
+// Fetch a specific note
+app.get("/getFile/:id/:filename", async (req, res) => {
+  try {
+    const { id, filename } = req.params;
+    console.log(id, filename);
+
+    // Find the note by _id
+    const note = await db.collection('notes').findOne({ _id: new ObjectId(id) });
+
+    if (!note) {
+      return res.status(404).json({ error: "Note not found" });
+    }
+
+    // Find the file in noteDetails array
+    const fileDetail = note.noteDetails.find(
+      (detail) => detail.originalName === filename
+    );
+
+    if (!fileDetail) {
+      return res.status(404).json({ error: "File not found" });
+    }
+
+    // Convert buffer to Base64
+    const base64File = fileDetail.buffer.toString("base64");
+
+    // Send file as Base64 string along with MIME type
+    res.json({ file: base64File, type: fileDetail.mimetype });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Upload notes
+
+
+app.post('/uploadnotes', upload.array('files'), async (req, res) => {
+  try {
+    const { title, description, cookieValue, domain } = req.body;
+ 
+ 
+
+    const noteDetails = [
+      { title },
+      { description },
+      ...req.files.map((file) => ({
+        originalName: file.originalname,
+        buffer: file.buffer, // Store the file buffer
+        mimetype: file.mimetype,
+      })),
+    ];
+    console.log(noteDetails);
+
+
+    const result = await db.collection('notes').insertOne({
+      noteDetails,
+      domain: domain,
+      cookieValue: cookieValue,
+      createdAt: new Date(), // Add timestamp if needed
+    });
+    
+    res.json({ message: 'Notes uploaded successfully' });
+  } catch (error) {
+    console.error('Error uploading notes:', error);
+    res.status(500).json({ error: 'Error uploading notes' });
+  }
+});
+
+
+//notes delete
+
+
+app.delete("/delete/notes/:id/:notesTitle?", async (req, res) => {
+  try {
+    const { id, notesTitle } = req.params;
+   
+    console.log(id,notesTitle);
+    if (id && notesTitle=="undefined") {
+      console.log(id);
+      // If only ID is provided, delete the entire note by _id
+      const result = await db.collection('notes').deleteOne({ _id: new ObjectId(id) });
+
+      if (result.deletedCount === 0) {
+        return res.status(404).json({ error: "Note not found" });
+      }
+
+      return res.json({ message: "Note deleted successfully" });
+    } else if (id && notesTitle) {
+      // If both ID and notesTitle are provided, remove specific file detail
+      const note = await db.collection('notes').findOne({ _id: new ObjectId(id) });
+
+      if (!note) {
+        return res.status(404).json({ error: "Note not found" });
+      }
+
+      const fileDetail = note.noteDetails.find(
+        (detail) => detail.originalName === notesTitle
+      );
+
+      if (!fileDetail) {
+        return res.status(404).json({ error: "File not found" });
+      }
+
+      // Remove the file from noteDetails array
+      const updateResult = await db.collection('notes').updateOne(
+        { _id: new ObjectId(id) },
+        { $pull: { noteDetails: { originalName: notesTitle } } }
+      );
+
+      if (updateResult.modifiedCount === 0) {
+        return res.status(500).json({ error: "Failed to delete file detail" });
+      }
+
+      res.json({ message: "File deleted successfully" });
+    } else {
+      return res.status(400).json({ error: "Invalid request" });
+    }
+  } catch (error) {
+    console.error("Error deleting note:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+
+
+//research paper
+
+//upload research papers
+app.post('/researchpapers', upload.single('pdf'), async (req, res) => {
+  try {
+    const { originalname, buffer } = req.file;
+    let { title, year,abstract } = req.body;
+console.log( title, year);
+    // Check if year is provided and is a valid number
+    if (isNaN(year)) {
+      console.log('Invalid or missing year');
+      return res.status(400).json({ error: 'Invalid or missing year' });
+    }
+
+    // Convert year to an integer
+    year = parseInt(year, 10);
+    
+  
+
+   
+    const collection = db.collection('researchpapers');
+
+    // Insert into the MongoDB collection
+    const doc = {
+      paper: buffer,
+      papertitle: title,
+      abstract:abstract,
+      papername: originalname,
+      paperyear: year
+    };
+    console.log(doc);
+    
+    const result = await collection.insertOne(doc);
+    console.log("insert successfull",result);
+    // Respond with the inserted data
+    res.json(result);
+
+  } catch (error) {
+    console.error('Error inserting research paper:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  } 
+});
+
+
+//get research paper
+app.get('/researchpaper/:year', async (req, res) => {
+  try {
+    const { year } = req.params;
+    console.log("Requested Year:", year);
+
+    // Fetch research papers from MongoDB for the specified year
+    const papers = await db
+      .collection('researchpapers')
+      .find({ paperyear: parseInt(year, 10) }, 
+        { projection: { _id: 1, papertitle: 1, abstract: 1, papername: 1, paperyear: 1, posted_at: 1 } }) // Include required fields
+      .toArray();
+
+    if (papers.length === 0) {
+      return res.status(404).json({ message: 'No papers found for the given year' });
+    }
+
+    // Map data correctly
+    const papersList = papers.map(paper => ({
+      _id: paper._id || 'Untitled',
+      title: paper.papertitle || 'Untitled',
+      name: paper.papername || 'N/A',
+      abstract: paper.abstract || 'No abstract available',
+      postedAt: paper.posted_at || 'Unknown',
+      year: paper.paperyear
+    }));
+
+    console.log("Papers Retrieved:", papersList);
+
+    res.status(200).json({ pdfs: papersList });
+  } catch (error) {
+    console.error('Error fetching research papers:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+
+
+
+// Schedule an email request
+app.post('/schedule-email', async (req, res) => {
+  const { email, _id } = req.body;
+  console.log(email, _id);
+
+  try {
+    // Check if the email and paper ID combination already exists
+    const existingRequest = await db.collection('email_requests').findOne({ email, id: _id });
+
+    if (existingRequest) {
+      // If a request already exists, send a response indicating the user has already requested the paper
+      return res.status(400).json({ message: 'You have already requested this paper.' });
+    }
+
+    // If no existing request is found, proceed with inserting the new request
+    await db.collection('email_requests').insertOne({
+      email,
+      id: _id,
+      scheduled_date: new Date(),
+    });
+
+    console.log("Email request sent successfully");
+
+    res.status(200).json({ message: 'Email request scheduled successfully.' });
+  } catch (error) {
+    console.error('Error scheduling email:', error);
+    res.status(500).json({ message: 'Error scheduling email.' });
+  }
+});
+
+app.delete('/delete-pdf/:id', async (req, res) => {
+  const { id } = req.params;
+  console.log(id);
+  
+
+  try {
+    // Convert the string ID to an ObjectId
+    const objectId = new ObjectId(id);
+
+    // Delete the document with the converted ObjectId
+    const result = await db.collection('researchpapers').deleteOne({ _id: objectId });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: 'Paper not found' });
+    }
+
+    res.json({ message: 'Paper successfully deleted' });
+  } catch (error) {
+    console.error('Error deleting paper:', error);
+    res.status(500).json({ error: 'Failed to delete paper' });
+  }
+});
+
+
+
+// ✅ Updated OAuth2 credentials
+  const CLIENT_ID = process.env.CLIENT_ID;
+  const CLIENT_SECRET =  process.env.CLIENT_SECRET;
+  const REDIRECT_URI = process.env.REDIRECT_URI;
+  const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
+// OAuth2 Client
+const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
+
+// ✅ Function to Send Emails
+async function sendScheduledEmails() {
+  console.log("Checking for scheduled emails...");
+
+  try {
+    const emailRequests = await db
+      .collection("email_requests")
+      .find({ scheduled_date: { $lte: new Date() } })
+      .toArray();
+
+    for (let request of emailRequests) {
+      const objectId = new ObjectId(request.id);
+      const paper = await db.collection("researchpapers").findOne({ _id: objectId });
+
+      if (paper) {
+        
+        
+        const pdfdata = Buffer.from(paper.paper.buffer); // ✅ Extracts raw binary data
+        console.log(pdfdata);
+        ;
+        
+        
+        const accessToken = await oAuth2Client.getAccessToken();
+    
+
+        const transport = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            type: "OAuth2",
+            user: "jothimani88531@gmail.com",
+            clientId: CLIENT_ID,
+            clientSecret: CLIENT_SECRET,
+            refreshToken: REFRESH_TOKEN,
+            accessToken: accessToken.token,
+          },
+        });
+
+        // Email options
+        const mailOptions = {
+          from: "Your Name <jothimani88531@gmail.com>",
+          to: request.email,
+          subject: `Requested Research Paper: ${paper.papertitle}`,
+          text: `Here is your requested research paper titled: ${paper.papertitle}`,
+          attachments: [
+            {
+              filename: `${paper.papertitle}.pdf`,
+              content:pdfdata, // Assuming 'paper.paper' is a Buffer
+              contentType: "application/pdf",
+            },
+          ],
+        };
+
+        // Send email
+        await transport.sendMail(mailOptions);
+        console.log(`✅ Email sent to ${paper.email} with PDF titled ${paper.papertitle}`);
+      }
+    }
+
+    // Delete processed requests
+    await db.collection("email_requests").deleteMany({ scheduled_date: { $lte: new Date() } });
+    console.log("✅ Processed and deleted scheduled email requests.");
+  } catch (error) {
+    console.error("❌ Error processing scheduled emails:", error);
+  }
+}
+
+// ✅ Run Email Check Every 100 Seconds
+setInterval(sendScheduledEmails, 1000000); 
 
 // Start server
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
