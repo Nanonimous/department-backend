@@ -13,7 +13,7 @@ route.use((req,res,next)=>{
 })
 
 
-// GET request for retrive the pdf
+// GET request for retrive thrse pdf
 
 route.get("/",async(req,res)=>{
 
@@ -36,7 +36,7 @@ route.post("/",upload,async(req,res)=>{
     console.log(file)
    
 
-    // const result = await collection.insertOne(file);
+    const result = await collection.insertOne(file);
 
     res.json({message:"file upload route for edit pdf"})
 

@@ -66,10 +66,10 @@ route.put("/",async(req,res)=>{
     // console.log(req.body)
     const val = req.body;
 
+    const filter = { _id : new ObjectId(req.body.videoId) };
     delete val.videoId
     console.log(val)
 
-    const filter = { _id : new ObjectId(req.body.videoId) };
     const data = {$set: val}
 
       const result = await collection.updateOne(filter,data)

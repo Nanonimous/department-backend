@@ -15,7 +15,6 @@ const hashPassword = async (password) => {
 
 // MongoDB Atlas connection string (replace with actual values)
 const uri = process.env.CONNECTING_STRING;
-
 // Connect to MongoDB Atlas
 mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => {
@@ -45,7 +44,7 @@ const adminUser = async () => {
   const newUser = new User({
     name: 'admin',
     password: await hashPassword('placement'),
-    role:'admin'
+    role:'Admin'
   });
 
 // const createFaculty = async()=>{

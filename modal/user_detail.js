@@ -46,4 +46,4 @@ const userSchema = new mongoose.Schema({
 });
 
 // Create a model based on the schema
-export default mongoose.model('User_Detail', userSchema);
+export default mongoose.model('user_details', userSchema);
