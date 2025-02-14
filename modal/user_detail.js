@@ -6,41 +6,44 @@ const userSchema = new mongoose.Schema({
     type:String,
     required:true
   },
-  // email: {
-  //   type:String,
-  //   required:true
-  // },
+  email: {
+    type:String,
+    required:true
+  },
   password: {
     type:String,
     required:true
   },
-  // register_no:{
-  //   type:String,
-  //   required:true
-  // },
-  // enrollment_no:{
-  //   type:String,
-  //   required:true
-  // },
-  // linkedin_link:{
-  //   type:String,
-  // },
-  // github_link:{
-  //   type:String,
-  // },
-  // leetcode_link:{
-  //   type:String,
-  // },
-  // resume:{
-  //   type:Buffer,
-  // },
-  // profile_desc:{
-  //   type:String,
-  // },
-  // profile_photo:{
-  //   type:Buffer,
-  // },
+  register_no:{
+    type:String,
+    required:true
+  },
+  enrollment_no:{
+    type:String,
+    required:true
+  },
+  linkedin_link:{
+    type:String,
+  },
+  github_link:{
+    type:String,
+  },
+  leetcode_link:{
+    type:String,
+  },
+  resume:{
+    type:Buffer,
+  },
+  profile_desc:{
+    type:String,
+  },
+  profile_photo:{
+    type:Buffer,
+  },
   role:{
+    type:String
+  },
+  year:{
     type:String
   }
 });
