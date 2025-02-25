@@ -759,10 +759,11 @@ app.get("/notes", async (req, res) => {
   try {
     const filter = domain && typeof domain === 'string' ? { domain: domain } : {};
 
-    // Fetch documents from the 'links' collection based on the filter
-    const notes = await db.collection("notes").find({}, { 
+    // Fetch documents from the 'notes' collection based on the filter
+    const notes = await db.collection("notes").find(filter, { 
       projection: { "noteDetails.buffer": 0 }  // Excludes only the "buffer" field
     }).toArray();
+    
     
     
 
