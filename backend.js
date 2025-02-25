@@ -14,6 +14,7 @@ import patent from "./routes/patent.js"
 import A_Calander from './routes/Single_File_upload/Single_file_upload.js';
 import Major_Event_backend from './routes/Event_page/Major_Event_backend.js';
 import User_Detail from './routes/user_detail/user_detail.js';
+import Token from './routes/Token_verifier/token.js';
 import { google } from 'googleapis';
 export { db }; // Export the `db` instance
 dotenv.config();
@@ -130,6 +131,7 @@ app.use("/patent",patent)
 app.use("/file_upload",A_Calander)
 app.use("/major_event",Major_Event_backend)
 app.use("/user_detail",User_Detail)
+app.use("/Token",Token)
 
 
 
@@ -1041,12 +1043,6 @@ app.delete('/delete-pdf/:id', async (req, res) => {
   }
 });
 
-app.get("/summa",async(req,res)=>{
-
-  await db.collection("user_details").deleteMany({});
-
-  res.json("success")
-})
 
 
 // ✅ Updated OAuth2 credentials
