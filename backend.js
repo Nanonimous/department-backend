@@ -912,9 +912,11 @@ app.delete("/delete/notes/:id/:notesTitle?", async (req, res) => {
 app.post('/researchpapers', upload.single('pdf'), async (req, res) => {
   try {
     const { originalname, buffer } = req.file;
-    let { title, year,abstract } = req.body;
-console.log( title, year);
-    // Check if year is provided and is a valid number
+    let { title, year, abstract, domain } = req.body;
+    
+    console.log("Received Data:", title, year, domain);
+
+    // Validate year
     if (isNaN(year)) {
       console.log('Invalid or missing year');
       return res.status(400).json({ error: 'Invalid or missing year' });
@@ -922,51 +924,66 @@ console.log( title, year);
 
     // Convert year to an integer
     year = parseInt(year, 10);
-    
-  
 
-   
+    // Validate domain
+    if (!domain || typeof domain !== 'string') {
+      console.log('Invalid or missing domain');
+      return res.status(400).json({ error: 'Invalid or missing domain' });
+    }
+
     const collection = db.collection('researchpapers');
 
-    // Insert into the MongoDB collection
+    // Insert into MongoDB with domain field
     const doc = {
       paper: buffer,
       papertitle: title,
-      abstract:abstract,
+      abstract: abstract,
       papername: originalname,
-      paperyear: year
+      paperyear: year,
+      domain: domain // Added domain field
     };
-    console.log(doc);
+
+    console.log("Document to Insert:", doc);
     
     const result = await collection.insertOne(doc);
-    console.log("insert successfull",result);
+    console.log("Insert successful:", result);
+
     // Respond with the inserted data
-    res.json(result);
+    res.json({ message: "Research paper added successfully", insertedId: result.insertedId });
 
   } catch (error) {
     console.error('Error inserting research paper:', error);
     res.status(500).json({ error: 'Internal server error' });
-  } 
+  }
 });
 
 
-//get research paper
-app.get('/researchpaper/:year', async (req, res) => {
-  try {
-    const { year } = req.params;
-    console.log("Requested Year:", year);
 
-    // Fetch research papers from MongoDB for the specified year
+//get research paper
+app.get('/researchpaper/:year/:domain', async (req, res) => {
+  try {
+    const { year, domain } = req.params; // Extract both year and domain from params
+    console.log("Requested Year:", year);
+    console.log("Requested Domain:", domain);
+    
+    // Fetch research papers from MongoDB for the specified year and domain
     const papers = await db
       .collection('researchpapers')
-      .find({ paperyear: parseInt(year, 10) }, 
-        { projection: { _id: 1, papertitle: 1, abstract: 1, papername: 1, paperyear: 1, posted_at: 1 } }) // Include required fields
+      .find(
+        { 
+          paperyear: parseInt(year, 10), 
+          domain: domain // Filter by domain
+        }, 
+        { 
+          projection: { _id: 1, papertitle: 1, abstract: 1, papername: 1, paperyear: 1, posted_at: 1, domain: 1 } 
+        }
+      )
       .toArray();
-
+    
     if (papers.length === 0) {
-      return res.status(404).json({ message: 'No papers found for the given year' });
+      return res.status(404).json({ message: 'No papers found for the given year and domain' });
     }
-
+    
     // Map data correctly
     const papersList = papers.map(paper => ({
       _id: paper._id || 'Untitled',
@@ -974,12 +991,14 @@ app.get('/researchpaper/:year', async (req, res) => {
       name: paper.papername || 'N/A',
       abstract: paper.abstract || 'No abstract available',
       postedAt: paper.posted_at || 'Unknown',
-      year: paper.paperyear
+      year: paper.paperyear,
+      domain: paper.domain || 'Unknown'
     }));
-
+    
     console.log("Papers Retrieved:", papersList);
-
+    
     res.status(200).json({ pdfs: papersList });
+    
   } catch (error) {
     console.error('Error fetching research papers:', error);
     res.status(500).json({ error: 'Internal server error' });
