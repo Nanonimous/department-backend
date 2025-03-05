@@ -280,9 +280,12 @@ app.post('/login', sanitizeInput, async (req, res) => {
       name : user.name,
       role : user.role,
       _id :user._id,
-      reg:user.register_no
+      reg:user.register_no,
+      email:user.email
     }
     }
+    console.log(jwtPayload);
+    
   
   // Create a JWT token
   const token = jwt.sign({ jwtPayload }, SECRET_KEY, { expiresIn: '1h' });
@@ -1082,22 +1085,26 @@ async function sendScheduledEmails() {
       .collection("email_requests")
       .find({ scheduled_date: { $lte: new Date() } })
       .toArray();
+      
 
     for (let request of emailRequests) {
       const objectId = new ObjectId(request.id);
       const paper = await db.collection("researchpapers").findOne({ _id: objectId });
 
       if (paper) {
-        
-        
         const pdfdata = Buffer.from(paper.paper.buffer); // ✅ Extracts raw binary data
         console.log(pdfdata);
-        ;
-        
-        
-        const accessToken = await oAuth2Client.getAccessToken();
-    
+        const { token } = await oAuth2Client.getAccessToken();
 
+        if (!token) {
+          throw new Error("Failed to retrieve access token.");
+        }else{
+          console.log("token",token);
+          
+        }
+        console.log(request);
+        console.log(request.email);
+        
         const transport = nodemailer.createTransport({
           service: "gmail",
           auth: {
@@ -1106,7 +1113,7 @@ async function sendScheduledEmails() {
             clientId: CLIENT_ID,
             clientSecret: CLIENT_SECRET,
             refreshToken: REFRESH_TOKEN,
-            accessToken: accessToken.token,
+            accessToken:token,
           },
         });
 
@@ -1124,10 +1131,11 @@ async function sendScheduledEmails() {
             },
           ],
         };
-
+          console.log("come to send emAIL after ready mailoption");
+          
         // Send email
         await transport.sendMail(mailOptions);
-        console.log(`✅ Email sent to ${paper.email} with PDF titled ${paper.papertitle}`);
+        console.log(`✅ Email sent to ${request.email} with PDF titled ${paper.papertitle}`);
       }
     }
 
@@ -1140,7 +1148,7 @@ async function sendScheduledEmails() {
 }
 
 // ✅ Run Email Check Every 100 Seconds
-setInterval(sendScheduledEmails, 1000000); 
+setInterval(sendScheduledEmails, 10000); 
 
 // Start server
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
