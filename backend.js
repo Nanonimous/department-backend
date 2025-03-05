@@ -1148,7 +1148,7 @@ async function sendScheduledEmails() {
 }
 
 // ✅ Run Email Check Every 100 Seconds
-setInterval(sendScheduledEmails, 10000); 
+setInterval(sendScheduledEmails, 1000000); 
 
 // Start server
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
