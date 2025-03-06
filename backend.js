@@ -99,7 +99,10 @@ const transporter = nodemailer.createTransport({
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // set max file size to 10MB
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB for files
+    fieldSize: 5 * 1024 * 1024, // 5MB for text fields (adjust as needed)
+  },
 });
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -312,15 +315,19 @@ app.post('/logout', (req, res) => {
 });
 
 //forget password
-app.post('/forgot-password',sanitizeInput, async (req, res) => {
+app.post('/forgot-password', async (req, res) => {
+ 
+  
   const { email } = req.body;
-  const user = await db.collection("users").findOne({email:email});
+  console.log(email);
+  
+  const user = await db.collection("user_details").findOne({email:email});
   console.log(user);
   if (!user) {
     return res.status(404).json({ message: 'User not found' });
   }
   const token = jwt.sign({ email }, SECRET_KEY, { expiresIn: '5m' });
-  const resetUrl = `http://localhost:3000/#reset-password?token=${token}`;
+  const resetUrl = `http://localhost:3000/reset-password?token=${token}`;
   // Send email with reset link
   const mailOptions = {
     from: fromemail,
@@ -331,6 +338,8 @@ app.post('/forgot-password',sanitizeInput, async (req, res) => {
   console.log("email created");
   try {
     await transporter.sendMail(mailOptions);
+    console.log("sucessfully send");
+    
     res.status(200).json({ message: 'Password reset link sent' });
   } catch (error) {
     console.error('Error sending email:', error);
@@ -342,7 +351,7 @@ app.post('/forgot-password',sanitizeInput, async (req, res) => {
 // Reset Password Endpoint
 app.post('/reset-password', async (req, res) => {
   const { token, password } = req.body;
-  console.log(token, password);
+  console.log(req.body);
 
   if (!token || !password ) {
     return res.status(400).send({ message: 'Token and new password are required' });
@@ -351,10 +360,11 @@ app.post('/reset-password', async (req, res) => {
   try {
     // Verify the token
     const decoded = jwt.verify(token, SECRET_KEY);
+    console.log(decoded);
     const { email } = decoded; // Extract email from the token payload
 
     // Check if the email exists in the database
-    const user = await db.collection("users").findOne({email });
+    const user = await db.collection("user_details").findOne({email });
 
     if (!user) {
       return res.status(404).send({ message: 'User not found' });
@@ -364,7 +374,7 @@ app.post('/reset-password', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password , 10);
 
     // Update the user's password in the database
-    const result = await db.collection("users").updateOne(
+    const result = await db.collection("user_details").updateOne(
       { email },
       {
         $set: { password: hashedPassword },
