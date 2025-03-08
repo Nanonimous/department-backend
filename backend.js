@@ -109,7 +109,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Middleware
 const corsOptions = {
-  origin: 'http://localhost:3000', // Frontend URL (adjust if different)
+  origin:[ 'http://localhost:3000', 'https://mvitcseicb.in','https://www.mvitcseicb.in'], // Frontend URL (adjust if different)
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed methods
   credentials: true, // Allow cookies to be sent
 };
@@ -292,6 +292,7 @@ app.post('/login', sanitizeInput, async (req, res) => {
     httpOnly: false,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'Lax',
+    domain:".mvitcseicb.in",
     maxAge: 3600000,
   });
 
@@ -317,7 +318,7 @@ app.post('/forgot-password',sanitizeInput, async (req, res) => {
     return res.status(404).json({ message: 'User not found' });
   }
   const token = jwt.sign({ email }, SECRET_KEY, { expiresIn: '5m' });
-  const resetUrl = `http://localhost:3000/#reset-password?token=${token}`;
+  const resetUrl = `https://mvitcseicb.in/reset-password?token=${token}`;
   // Send email with reset link
   const mailOptions = {
     from: fromemail,
