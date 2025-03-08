@@ -25,6 +25,7 @@ import Faculty from './modal/Faculty_Detail.js';
 // Your code logic here
 // MongoDB connection URI and Database Name
 const uri = process.env.CONNECTING_STRING;
+const domain = "https://mvitcseicb.in"
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -96,6 +97,7 @@ const transporter = nodemailer.createTransport({
     pass:passemail,
   },
 });
+
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -298,6 +300,7 @@ app.post('/login', sanitizeInput, async (req, res) => {
     httpOnly: false,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'Lax',
+    domain:".mvitcseicb.in",
     maxAge: 3600000,
   });
 
@@ -327,7 +330,7 @@ app.post('/forgot-password', async (req, res) => {
     return res.status(404).json({ message: 'User not found' });
   }
   const token = jwt.sign({ email }, SECRET_KEY, { expiresIn: '5m' });
-  const resetUrl = `http://localhost:3000/reset-password?token=${token}`;
+  const resetUrl = `${domain}/reset-password?token=${token}`;
   // Send email with reset link
   const mailOptions = {
     from: fromemail,
