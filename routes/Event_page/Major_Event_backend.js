@@ -17,7 +17,7 @@ route.use((req,res,next)=>{
 route.get("/",async(req,res)=>{
 
     const result = await collection.find({}).toArray()
-    console.log(result[0].file.mimetype)
+   
 
     res.json(result)
 })
